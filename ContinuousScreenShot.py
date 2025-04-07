@@ -1,8 +1,9 @@
+#version 2.0.0
+
 import os
+import json
 import threading
 import tkinter
-import time
-import traceback
 from datetime import datetime
 
 import pyautogui
@@ -21,12 +22,9 @@ class ContinuousScreenShot:
         self.root.title("連続スクショ")
 
         # 機能パラメータ
-        self.pos1 = None
-        self.pos2 = None
-        self.save_folder = "./"
-        self.key = 'ctrl+s'
+        self.load_config()
 
-        # キーバウンド
+        # キーバインド
         keyboard.add_hotkey('ctrl+s', lambda: self.on_shortcut_pressed())
 
         # GUIレイアウト
@@ -52,35 +50,70 @@ class ContinuousScreenShot:
         poslabel_frame = tkinter.Frame(root)
         poslabel_frame.pack(pady=10)
 
-        self.label_pos1 = tkinter.Label(poslabel_frame, text="pos1: None")
+        self.label_pos1 = tkinter.Label(poslabel_frame, text=f"pos1: {self.pos1}")
         self.label_pos1.pack(side="left", expand=True, padx=5)
 
-        self.label_pos2 = tkinter.Label(poslabel_frame, text="pos2: None")
+        self.label_pos2 = tkinter.Label(poslabel_frame, text=f"pos2: {self.pos2}")
         self.label_pos2.pack(side="left", expand=True, padx=5)
 
-        self.current_key_label = tkinter.Label(root, text="key: ctrl+s")
+        self.current_key_label = tkinter.Label(root, text=f"key: {self.key}")
         self.current_key_label.pack(pady=10)
 
-        self.label_folder = tkinter.Label(root, text="folder: ./")
+        self.label_folder = tkinter.Label(root, text=f"folder: {self.save_folder}")
         self.label_folder.pack(pady=10)
 
         self.log = tkinter.Label(root, text="")
         self.log.pack(pady=10)
 
-        #self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
-        #self.exit_button.pack(pady=10)
+        if not self.debug_mode:
+            self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
+            self.exit_button.pack(pady=10)
+        else:
+            end_frame = tkinter.Frame(root)
+            end_frame.pack(pady=10)
 
-        end_frame = tkinter.Frame(root)
-        end_frame.pack(pady=10)
+            self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
+            self.exit_button.pack(side="left", expand=True, padx=5)
 
-        self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
-        self.exit_button.pack(side="left", expand=True, padx=5)
+            self.debug_button = tkinter.Button(root, text="debug", command=self.debug_fun)
+            self.debug_button.pack(side="left", expand=True, padx=5)
 
-        self.debug_button = tkinter.Button(root, text="debug", command=self.print_hotkeys)
-        self.debug_button.pack(side="left", expand=True, padx=5)
-
-    def print_hotkeys(self):
+    def debug_fun(self):
+        self.save_config()
         print("現在のホットキー:", keyboard._hotkeys)
+
+    def load_config(self):
+        if os.path.exists("config.json"):
+            try:
+                with open("config.json", "r") as f:
+                    config = json.load(f)
+                self.debug_mode = config.get("debug_mode", False)
+                self.save_folder = config.get("save_folder", "./")
+                self.key = config.get("shortcut_key", "ctrl+s")
+                self.pos1 = tuple(config.get("pos1")) if config.get("pos1") else None
+                self.pos2 = tuple(config.get("pos2")) if config.get("pos2") else None
+            except Exception as e:
+                self.log.config(text=f"設定ファイルが読み込めませんでした")
+        else:
+            self.save_folder = "./"
+            self.key = "ctrl+s"
+            self.pos1 = None
+            self.pos2 = None
+            self.debug_mode = False
+
+    def save_config(self):
+        config = {
+            "debug_mode": self.debug_mode,
+            "save_folder": self.save_folder,
+            "shortcut_key": self.key,
+            "pos1": self.pos1,
+            "pos2": self.pos2
+        }
+        try:
+            with open("config.json", "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            print(f"設定ファイルの保存に失敗しました: {e}")
 
     # フォルダ設定処理
     def set_folder(self):
@@ -88,6 +121,7 @@ class ContinuousScreenShot:
         if folder:
             self.save_folder = folder
             self.label_folder.config(text=f"folder: {self.save_folder}")
+            self.save_config()
             self.log.config(text="フォルダ設定完了")
 
     def set_key(self):
@@ -97,7 +131,8 @@ class ContinuousScreenShot:
             keyboard.unhook_all_hotkeys()
             self.key = new_key
             keyboard.add_hotkey(new_key, lambda: self.on_shortcut_pressed())
-            self.log.config(text="")
+            self.log.config(text="キー設定完了")
+            self.save_config()
         except ValueError:
             self.log.config(text=f"エラー： キーが間違っています")
             self.key = old_key
@@ -130,6 +165,7 @@ class ContinuousScreenShot:
                 self.label_pos2.config(text=f"pos2: {self.pos2}")
                 self.pos_button.config(state="active")
                 self.log.config(text="座標設定完了")
+                self.save_config()
                 return False
 
     # スクリーンショット撮影処理
@@ -155,15 +191,22 @@ class ContinuousScreenShot:
 
     # アプリ終了処理
     def exit_app(self):
+        self.save_config()
         keyboard.unhook_all_hotkeys()
         self.root.destroy()
 
 if __name__ == "__main__":
-    try:
-        root = tkinter.Tk()
-        app = ContinuousScreenShot(root)
-        root.mainloop()
-    except Exception as e:
-        print(traceback.format_exc())
-    finally:
-        time.sleep(10)
+    root = tkinter.Tk()
+    app = ContinuousScreenShot(root)
+    root.mainloop()
+
+# import time
+# import traceback
+    # try:
+    #     root = tkinter.Tk()
+    #     app = ContinuousScreenShot(root)
+    #     root.mainloop()
+    # except Exception as e:
+    #     print(traceback.format_exc())
+    # finally:
+    #     time.sleep(3)
