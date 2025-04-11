@@ -1,4 +1,4 @@
-#version 2.0.0
+#version 2.0.1
 
 import os
 import json
@@ -110,7 +110,7 @@ class ContinuousScreenShot:
             "pos2": self.pos2
         }
         try:
-            with open("config.json", "w", encoding="utf-8") as f:
+            with open("config.json", "w", encoding="shift-JIS") as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
         except Exception as e:
             print(f"設定ファイルの保存に失敗しました: {e}")
