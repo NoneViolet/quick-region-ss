@@ -1,4 +1,4 @@
-#version 2.0.2
+#version 2.0.3
 
 import os
 import json
@@ -108,9 +108,9 @@ class ContinuousScreenShot:
                 self.pos1 = tuple(config.get("pos1")) if config.get("pos1") else None
                 self.pos2 = tuple(config.get("pos2")) if config.get("pos2") else None
             except Exception as e:
-                self.update_log_message("設定ファイルが読み込めませんでした")
+                self.reset_config()
+                self.save_config()
         else:
-            self.update_log_message("範囲を設定してください")
             self.reset_config()
             self.save_config()
 
