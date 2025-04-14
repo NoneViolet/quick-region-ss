@@ -1,4 +1,4 @@
-#version 2.0.1
+#version 2.0.2
 
 import os
 import json
@@ -12,7 +12,6 @@ import keyboard
 
 from tkinter import filedialog
 
-
 class ContinuousScreenShot:
     def __init__(self, root):
         # GUIパラメータ
@@ -25,7 +24,7 @@ class ContinuousScreenShot:
         self.load_config()
 
         # キーバインド
-        keyboard.add_hotkey('ctrl+s', lambda: self.on_shortcut_pressed())
+        keyboard.add_hotkey(self.key, lambda: self.on_shortcut_pressed())
 
         # GUIレイアウト
         button_frame = tkinter.Frame(root)
@@ -69,23 +68,39 @@ class ContinuousScreenShot:
             self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
             self.exit_button.pack(pady=10)
         else:
-            end_frame = tkinter.Frame(root)
-            end_frame.pack(pady=10)
+            footer_frame = tkinter.Frame(root)
+            footer_frame.pack(pady=10)
 
-            self.exit_button = tkinter.Button(root, text="終了", command=self.exit_app)
+            self.exit_button = tkinter.Button(footer_frame, text="終了", command=self.exit_app)
             self.exit_button.pack(side="left", expand=True, padx=5)
 
-            self.debug_button = tkinter.Button(root, text="debug", command=self.debug_fun)
+            self.debug_button = tkinter.Button(footer_frame, text="debug", command=self.debug_fun)
             self.debug_button.pack(side="left", expand=True, padx=5)
 
     def debug_fun(self):
         self.save_config()
         print("現在のホットキー:", keyboard._hotkeys)
 
+    def reset_config(self):
+        self.debug_mode = False
+        self.save_folder = "./"
+        self.key = "ctrl+s"
+        self.pos1 = None
+        self.pos2 = None
+
+    def update_all_rabel(self):
+        self.label_pos1.config(text=f"pos1: {self.pos1}")
+        self.label_pos2.config(text=f"pos2: {self.pos2}")
+        self.current_key_label.config(text=f"key: {self.key}")
+        self.label_folder.config(text=f"folder: {self.save_folder}")
+
+    def update_log_message(self, message):
+        self.log.config(text=message)
+
     def load_config(self):
         if os.path.exists("config.json"):
             try:
-                with open("config.json", "r") as f:
+                with open("config.json", "r", encoding="utf-8") as f:
                     config = json.load(f)
                 self.debug_mode = config.get("debug_mode", False)
                 self.save_folder = config.get("save_folder", "./")
@@ -93,13 +108,11 @@ class ContinuousScreenShot:
                 self.pos1 = tuple(config.get("pos1")) if config.get("pos1") else None
                 self.pos2 = tuple(config.get("pos2")) if config.get("pos2") else None
             except Exception as e:
-                self.log.config(text=f"設定ファイルが読み込めませんでした")
+                self.update_log_message("設定ファイルが読み込めませんでした")
         else:
-            self.save_folder = "./"
-            self.key = "ctrl+s"
-            self.pos1 = None
-            self.pos2 = None
-            self.debug_mode = False
+            self.update_log_message("範囲を設定してください")
+            self.reset_config()
+            self.save_config()
 
     def save_config(self):
         config = {
@@ -110,7 +123,7 @@ class ContinuousScreenShot:
             "pos2": self.pos2
         }
         try:
-            with open("config.json", "w", encoding="shift-JIS") as f:
+            with open("config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
         except Exception as e:
             print(f"設定ファイルの保存に失敗しました: {e}")
@@ -120,9 +133,9 @@ class ContinuousScreenShot:
         folder = filedialog.askdirectory()
         if folder:
             self.save_folder = folder
-            self.label_folder.config(text=f"folder: {self.save_folder}")
+            self.update_all_rabel()
             self.save_config()
-            self.log.config(text="フォルダ設定完了")
+            self.update_log_message("フォルダ設定完了")
 
     def set_key(self):
         old_key = self.key
@@ -131,14 +144,14 @@ class ContinuousScreenShot:
             keyboard.unhook_all_hotkeys()
             self.key = new_key
             keyboard.add_hotkey(new_key, lambda: self.on_shortcut_pressed())
-            self.log.config(text="キー設定完了")
+            self.update_log_message("キー設定完了")
             self.save_config()
         except ValueError:
-            self.log.config(text=f"エラー： キーが間違っています")
+            self.update_log_message("エラー： キーが間違っています")
             self.key = old_key
             keyboard.add_hotkey(old_key, lambda: self.on_shortcut_pressed())
         finally:
-            self.current_key_label.config(text=f"key: {self.key}")
+            self.update_all_rabel()
             self.key_input.delete(0, tkinter.END)
             self.key_input.insert(0, self.key) 
 
@@ -146,6 +159,7 @@ class ContinuousScreenShot:
     def set_pos(self):
         self.pos1 = None
         self.pos2 = None
+        self.update_all_rabel()
         self.pos_button.config(state="disabled")
         threading.Thread(target=self.listen_mouse_clicks, daemon=True).start()
 
@@ -159,18 +173,17 @@ class ContinuousScreenShot:
         if pressed:
             if self.pos1 is None:
                 self.pos1 = (x, y)
-                self.label_pos1.config(text=f"pos1: {self.pos1}")
+                self.update_all_rabel()
             else:
                 self.pos2 = (x, y)
-                self.label_pos2.config(text=f"pos2: {self.pos2}")
+                self.update_all_rabel()
                 self.pos_button.config(state="active")
-                self.log.config(text="座標設定完了")
+                self.update_log_message("座標設定完了")
                 self.save_config()
                 return False
 
     # スクリーンショット撮影処理
     def on_shortcut_pressed(self):
-        print("現在のホットキー:", keyboard._hotkeys)
         try:
             if self.pos1 and self.pos2:
                 x1, y1 = self.pos1
@@ -183,11 +196,11 @@ class ContinuousScreenShot:
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 filename = f"screenshot_{timestamp}.png"
                 screenshot.save(os.path.join(self.save_folder, filename))
-                self.log.config(text=f"{filename}を保存しました")
+                self.update_log_message(f"{filename}を保存しました")
             else:
-                self.log.config(text=f"エラー: 座標を指定してください")
+                self.update_log_message(f"エラー: 座標を指定してください")
         except AttributeError as e:
-            self.log.config(text=f"エラー: {e}")
+            self.update_log_message(f"エラー: {e}")
 
     # アプリ終了処理
     def exit_app(self):
