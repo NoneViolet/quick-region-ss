@@ -1,4 +1,4 @@
-#version 2.0.3
+#version 2.0.4
 
 import os
 import json
@@ -12,13 +12,13 @@ import keyboard
 
 from tkinter import filedialog
 
-class ContinuousScreenShot:
+class QuickRegionSS:
     def __init__(self, root):
         # GUIパラメータ
         self.root = root
         self.root.geometry("450x450+0+0")
         self.root.resizable(0, 0)
-        self.root.title("連続スクショ")
+        self.root.title("QuickRegionSS")
 
         # 機能パラメータ
         self.load_config()
@@ -210,14 +210,14 @@ class ContinuousScreenShot:
 
 if __name__ == "__main__":
     root = tkinter.Tk()
-    app = ContinuousScreenShot(root)
+    app = QuickRegionSS(root)
     root.mainloop()
 
 # import time
 # import traceback
     # try:
     #     root = tkinter.Tk()
-    #     app = ContinuousScreenShot(root)
+    #     app = QuickRegionSS(root)
     #     root.mainloop()
     # except Exception as e:
     #     print(traceback.format_exc())
