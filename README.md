@@ -1,4 +1,4 @@
-# continuous-screen-shot
+# quick-region-ss
 
 準備中
 
