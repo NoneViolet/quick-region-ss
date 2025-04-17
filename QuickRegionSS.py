@@ -1,15 +1,15 @@
-#version 2.0.4
+#version 2.0.5
 
 import os
 import json
 import threading
 import tkinter
-from datetime import datetime
-
 import pyautogui
 import pynput
 import keyboard
 
+from typing import Optional, Tuple
+from datetime import datetime
 from tkinter import filedialog
 
 class QuickRegionSS:
@@ -26,7 +26,10 @@ class QuickRegionSS:
         # キーバインド
         keyboard.add_hotkey(self.key, lambda: self.on_shortcut_pressed())
 
-        # GUIレイアウト
+        self.build_gui()
+
+# -------------------------------GUI構築-------------------------------
+    def build_gui(self):
         button_frame = tkinter.Frame(root)
         button_frame.pack(pady=10)
 
@@ -77,30 +80,36 @@ class QuickRegionSS:
             self.debug_button = tkinter.Button(footer_frame, text="debug", command=self.debug_fun)
             self.debug_button.pack(side="left", expand=True, padx=5)
 
+# -------------------------------デバッグ用-------------------------------
     def debug_fun(self):
         self.save_config()
         print("現在のホットキー:", keyboard._hotkeys)
 
-    def reset_config(self):
-        self.debug_mode = False
-        self.save_folder = "./"
-        self.key = "ctrl+s"
-        self.pos1 = None
-        self.pos2 = None
 
+# -------------------------------ユーティリティ-------------------------------
     def update_all_rabel(self):
         self.label_pos1.config(text=f"pos1: {self.pos1}")
         self.label_pos2.config(text=f"pos2: {self.pos2}")
         self.current_key_label.config(text=f"key: {self.key}")
         self.label_folder.config(text=f"folder: {self.save_folder}")
 
-    def update_log_message(self, message):
-        self.log.config(text=message)
+    def get_config_path(self):
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
+
+# -------------------------------コンフィグ関連-------------------------------
+    def reset_config(self):
+        self.debug_mode: bool = False
+        self.save_folder: str = "./"
+        self.key: str = "ctrl+s"
+        self.pos1: Optional[Tuple[int, int]] = None
+        self.pos2: Optional[Tuple[int, int]] = None
 
     def load_config(self):
-        if os.path.exists("config.json"):
+        if os.path.exists(self.get_config_path()):
             try:
-                with open("config.json", "r", encoding="utf-8") as f:
+                with open(self.get_config_path(), "r", encoding="utf-8") as f:
                     config = json.load(f)
                 self.debug_mode = config.get("debug_mode", False)
                 self.save_folder = config.get("save_folder", "./")
@@ -123,12 +132,12 @@ class QuickRegionSS:
             "pos2": self.pos2
         }
         try:
-            with open("config.json", "w", encoding="utf-8") as f:
+            with open(self.get_config_path(), "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
         except Exception as e:
             print(f"設定ファイルの保存に失敗しました: {e}")
 
-    # フォルダ設定処理
+# -------------------------------保存フォルダ設定-------------------------------
     def set_folder(self):
         folder = filedialog.askdirectory()
         if folder:
@@ -137,6 +146,7 @@ class QuickRegionSS:
             self.save_config()
             self.update_log_message("フォルダ設定完了")
 
+# -------------------------------ホットキー設定-------------------------------
     def set_key(self):
         old_key = self.key
         new_key = self.key_input.get()
@@ -155,18 +165,18 @@ class QuickRegionSS:
             self.key_input.delete(0, tkinter.END)
             self.key_input.insert(0, self.key) 
 
-    # pos設定ハンドラ（マウスクリックをスレッドで処理）
+# -------------------------------座標設定-------------------------------
     def set_pos(self):
         self.pos1 = None
         self.pos2 = None
         self.update_all_rabel()
         self.pos_button.config(state="disabled")
-        threading.Thread(target=self.listen_mouse_clicks, daemon=True).start()
 
-    # マウスクリック待機スレッド
-    def listen_mouse_clicks(self):
-        with pynput.mouse.Listener(on_click=self.on_click) as listener:
-            listener.join()
+        # マウスクリック待機スレッド
+        def listen_mouse_clicks():
+            with pynput.mouse.Listener(on_click=self.on_click) as listener:
+                listener.join()
+        threading.Thread(target=listen_mouse_clicks, daemon=True).start()
 
     # pos設定処理
     def on_click(self, x, y, button, pressed):
@@ -182,7 +192,7 @@ class QuickRegionSS:
                 self.save_config()
                 return False
 
-    # スクリーンショット撮影処理
+# -------------------------------撮影処理-------------------------------
     def on_shortcut_pressed(self):
         try:
             if self.pos1 and self.pos2:
@@ -202,11 +212,13 @@ class QuickRegionSS:
         except AttributeError as e:
             self.update_log_message(f"エラー: {e}")
 
-    # アプリ終了処理
+# -------------------------------アプリ終了処理-------------------------------
     def exit_app(self):
         self.save_config()
         keyboard.unhook_all_hotkeys()
         self.root.destroy()
+
+# --------------------------------------------------------------
 
 if __name__ == "__main__":
     root = tkinter.Tk()
