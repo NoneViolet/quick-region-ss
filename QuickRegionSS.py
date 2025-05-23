@@ -1,6 +1,7 @@
-#version 2.0.5
+#version 2.0.6
 
 import os
+import sys
 import json
 import threading
 import tkinter
@@ -85,18 +86,23 @@ class QuickRegionSS:
         self.save_config()
         print("現在のホットキー:", keyboard._hotkeys)
 
-
 # -------------------------------ユーティリティ-------------------------------
     def update_all_rabel(self):
         self.label_pos1.config(text=f"pos1: {self.pos1}")
         self.label_pos2.config(text=f"pos2: {self.pos2}")
         self.current_key_label.config(text=f"key: {self.key}")
         self.label_folder.config(text=f"folder: {self.save_folder}")
+    
+    def update_log_message(self, message):
+        self.log.config(text=message)
 
     def get_config_path(self):
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-
-
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_path, "config.json")
+        return config_path
 
 # -------------------------------コンフィグ関連-------------------------------
     def reset_config(self):
@@ -207,6 +213,9 @@ class QuickRegionSS:
                 filename = f"screenshot_{timestamp}.png"
                 screenshot.save(os.path.join(self.save_folder, filename))
                 self.update_log_message(f"{filename}を保存しました")
+                self.log.config(bg="yellow")
+                self.root.after(1000, lambda: self.log.config(bg=self.root.cget("bg")))
+
             else:
                 self.update_log_message(f"エラー: 座標を指定してください")
         except AttributeError as e:
