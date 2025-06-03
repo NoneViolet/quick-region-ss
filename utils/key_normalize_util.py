@@ -1,7 +1,6 @@
 import re
 
-VALID_NORMAL = set("abcdefghijklmnopqrstuvwxyz1234567890") | \
-    {f'f{i}' for i in range(1, 13)}
+VALID_NORMAL = set("abcdefghijklmnopqrstuvwxyz1234567890")
 
 VALID_SPECIAL = {
     '<space>': set('space'),
