@@ -1,4 +1,4 @@
-#version 3.0.0
+#version 3.0.1
 
 import os
 import threading
@@ -121,6 +121,11 @@ class QuickRegionSS:
             self.update_log_message_success("フォルダ設定完了")
 
 # -------------------------------ホットキー設定-------------------------------
+    def update_key_inform(self) -> None:
+        self.key_input.delete(0, tkinter.END)
+        self.key_input.insert(0, self.config.key)
+        self.update_all_rabel()
+
     def start_hotkey_listener(self) -> None:
         normalized = normalize_hotkey_input(self.config.key)
         if not normalized:
@@ -136,20 +141,24 @@ class QuickRegionSS:
 
         self.listener_thread = threading.Thread(target=self.listener_controller.start, daemon=True)
         self.listener_thread.start()
+        self.update_key_inform()
         self.update_log_message_success(f"{normalized} キー登録完了")
 
     def set_key(self) -> None:
-        new_key = normalize_hotkey_input(self.key_input.get())
+        try:
+            old_key = self.config.key
+            new_key = normalize_hotkey_input(self.key_input.get())
 
-        if not new_key:
-            self.update_log_message_warn("キーが正しくありません")
-            return
+            if not new_key:
+                self.update_log_message_warn("キーが正しくありません")
+                return
 
-        self.config.set_key(new_key)
-        self.start_hotkey_listener()
-        self.update_all_rabel()
-        self.key_input.delete(0, tkinter.END)
-        self.key_input.insert(0, self.config.key)
+            self.config.set_key(new_key)
+            self.start_hotkey_listener()
+        except Exception as e:
+            self.update_log_message_error("キー変更中にエラーが発生しました。")
+            self.config.set_key(old_key)
+            self.update_key_inform()
 
 # -------------------------------座標設定-------------------------------
     def reset_pos(self) -> None:
