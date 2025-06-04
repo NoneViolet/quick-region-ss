@@ -22,7 +22,7 @@ Windowsでの動作を保証しています。
 ### ソースコードから実行
 ```bash
 git clone https://github.com/NoneViolet/quick-region-ss.git
-cd QuickRegionSS
+cd quick-region-ss
 pip install -r requirements.txt
 python QuickRegionSS.py
 ```
