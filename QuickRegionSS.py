@@ -1,4 +1,4 @@
-#version 3.0.1
+#version 3.1.0
 
 import os
 import threading
@@ -12,7 +12,7 @@ from datetime import datetime
 from tkinter import filedialog
 
 from utils.directory_util import get_resource_directory
-from utils.key_normalize_util import normalize_hotkey_input
+from utils.key_normalize_util import normalize_hotkey
 from utils.config_util import Config
 
 class QuickRegionSS:
@@ -31,14 +31,17 @@ class QuickRegionSS:
         self.log_after: Optional[int] = None
 
         self.build_gui()
-        self.start_hotkey_listener()
+        self.initialize_listener()
 
         self.update_all_rabel()
 
 # -------------------------------GUI構築-------------------------------
     def build_gui(self) -> None:
+
+        tkinter.Frame(root).pack(pady=5)
+
         button_frame = tkinter.Frame(root)
-        button_frame.pack(pady=10)
+        button_frame.pack(pady=5)
 
         self.pos_button = tkinter.Button(button_frame, text="範囲設定", command=self.set_pos)
         self.pos_button.pack(side="left", expand=True, padx=5)
@@ -47,15 +50,15 @@ class QuickRegionSS:
         folder_button.pack(side="left", expand=True, padx=5)
 
         keyconf_frame = tkinter.Frame(root)
-        keyconf_frame.pack(pady=10)
+        keyconf_frame.pack(pady=5)
 
-        self.key_input = tkinter.Entry(keyconf_frame, width=10)
+        self.key_input = tkinter.Entry(keyconf_frame, width=15)
         self.key_input.pack(side="left", expand=True, padx=5)
 
         key_button = tkinter.Button(keyconf_frame, text="キー変更", command=self.set_key)
         key_button.pack(side="left", expand=True, padx=5)
         
-        tkinter.Frame(root).pack(pady=15)
+        tkinter.Frame(root).pack(pady=20)
 
         poslabel_frame = tkinter.Frame(root)
         poslabel_frame.pack(pady=3)
@@ -97,7 +100,12 @@ class QuickRegionSS:
         self.label_pos1.config(text=f"pos1: {self.config.pos1}")
         self.label_pos2.config(text=f"pos2: {self.config.pos2}")
         self.current_key_label.config(text=f"key: {self.config.key}")
-        self.label_folder.config(text=f"folder: {self.config.save_folder}")
+        self.label_folder.config(text=f"folder: {self.ellipsis_folder_name(self.config.save_folder)}")
+
+    def ellipsis_folder_name(self, string: str, length: int = 20) -> str:
+        if len(string) > length:
+            string = "..." + string[-length:]
+        return string
     
     def update_log_message(self, message: str, color: str) -> None:
         self.log.config(text=message)
@@ -114,51 +122,63 @@ class QuickRegionSS:
         self.update_log_message(message, "indianred")  
 # -------------------------------保存フォルダ設定-------------------------------
     def set_folder(self) -> None:
-        folder = filedialog.askdirectory()
-        if folder:
-            self.config.set_save_folder(folder)
+        try:
+            old_folder = self.config.save_folder
+            folder = filedialog.askdirectory()
+            if folder:
+                self.config.set_save_folder(folder)
+                self.update_log_message_success("フォルダ設定完了")
+        except Exception:
+            self.update_log_message_error("キー変更中にエラーが発生しました。")
+            self.config.set_save_folder(old_folder)
+        finally:
             self.update_all_rabel()
-            self.update_log_message_success("フォルダ設定完了")
 
 # -------------------------------ホットキー設定-------------------------------
-    def update_key_inform(self) -> None:
+    def update_key_info(self) -> None:
         self.key_input.delete(0, tkinter.END)
         self.key_input.insert(0, self.config.key)
         self.update_all_rabel()
 
-    def start_hotkey_listener(self) -> None:
-        normalized = normalize_hotkey_input(self.config.key)
-        if not normalized:
-            self.update_log_message_warn("キーが正しくありません")
-            return
+    def get_input_key_and_normalize(self) -> None | str:
+        return normalize_hotkey(self.key_input.get())
 
+    def initialize_listener(self) -> None:
+        init_key = normalize_hotkey(self.config.key)
+        if not init_key:
+            init_key = "<ctrl>+s"
+        self.start_hotkey_listener(init_key)
+        self.update_key_info()
+
+    def start_hotkey_listener(self, key: str) -> None:
         if self.listener_controller:
             self.listener_controller.stop()
 
         self.listener_controller = keyboard.GlobalHotKeys({
-            normalized: self.on_shortcut_pressed
+            key: self.on_shortcut_pressed
         })
 
         self.listener_thread = threading.Thread(target=self.listener_controller.start, daemon=True)
         self.listener_thread.start()
-        self.update_key_inform()
-        self.update_log_message_success(f"{normalized} キー登録完了")
 
     def set_key(self) -> None:
         try:
             old_key = self.config.key
-            new_key = normalize_hotkey_input(self.key_input.get())
+            new_key = self.get_input_key_and_normalize()
 
             if not new_key:
                 self.update_log_message_warn("キーが正しくありません")
                 return
 
+            self.start_hotkey_listener(new_key)
             self.config.set_key(new_key)
-            self.start_hotkey_listener()
+            self.update_log_message_success(f"{new_key} キー登録完了")
         except Exception as e:
             self.update_log_message_error("キー変更中にエラーが発生しました。")
+            self.start_hotkey_listener(old_key)
             self.config.set_key(old_key)
-            self.update_key_inform()
+        finally:
+            self.update_key_info()
 
 # -------------------------------座標設定-------------------------------
     def reset_pos(self) -> None:

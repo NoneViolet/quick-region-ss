@@ -12,7 +12,7 @@ VALID_SPECIAL = {
 VALID_MODIFIER = {
     '<ctrl>': set('ctrl'),
     '<alt>': set('alt'),
-    '<shift>': set('shift'),
+    '<shift>': set('sft'),
     '<cmd>': set('cmd')
 }
 
@@ -55,7 +55,7 @@ def _is_key_main(key: str) -> None | str:
     else:
         return None
 
-def normalize_hotkey_input(user_input: str) -> None | str:
+def normalize_hotkey(user_input: str) -> None | str:
     keys = [key.strip() for key in user_input.split('+')]
     modifier_key = []
     main_key = None
