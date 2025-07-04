@@ -15,15 +15,6 @@ Windowsでの動作を想定しています。
 ### リリースから実行
 `QuickRegionSS.exe` を起動する
 
-
-### ソースコードから実行
-```bash
-git clone https://github.com/NoneViolet/quick-region-ss.git
-cd quick-region-ss
-pip install -r requirements.txt
-python QuickRegionSS.py
-```
-
 ### 操作方法
 1. 座標設定 ボタンで2点をクリックして撮影範囲を設定
 2. フォルダ選択 ボタンで保存先を設定
