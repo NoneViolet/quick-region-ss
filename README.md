@@ -51,6 +51,3 @@ python QuickRegionSS.py
 ```
 <space> <tab> <esc> <enter> <backspace> a-z 0-9
 ```
-
-## author
-のーん(紫)
