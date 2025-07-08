@@ -1,9 +1,12 @@
 #version 3.1.0
 
 import os
+import platform
+import ctypes
 import threading
 import tkinter
-import pyautogui
+import mss
+import mss.tools
 import pynput
 
 from typing import Optional, Any
@@ -223,12 +226,17 @@ class QuickRegionSS:
                 left, top = min(x1, x2), min(y1, y2)
                 width, height = abs(x2 - x1), abs(y2 - y1)
 
-                screenshot = pyautogui.screenshot(region=(left, top, width, height))
-                os.makedirs(self.config.save_folder, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                filename = f"screenshot_{timestamp}.png"
-                screenshot.save(os.path.join(self.config.save_folder, filename))
-                self.update_log_message_success(f"{filename}を保存しました")
+                with mss.mss() as sct:
+                    monitor = {"left": left, "top": top, "width": width, "height": height}
+                    sct_img = sct.grab(monitor)
+
+                    os.makedirs(self.config.save_folder, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    filename = f"screenshot_{timestamp}.png"
+                    filepath = os.path.join(self.config.save_folder, filename)
+
+                    mss.tools.to_png(sct_img.rgb, sct_img.size, output=filepath)
+                    self.update_log_message_success(f"{filename}を保存しました")
             else:
                 self.update_log_message_warn(f"座標を指定してください")
         except Exception as e:
@@ -245,6 +253,11 @@ class QuickRegionSS:
 # --------------------------------------------------------------
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except Exception:
+            ctypes.windll.user32.SetProcessDPIAware()
     root = tkinter.Tk()
     app = QuickRegionSS(root)
     root.mainloop()
